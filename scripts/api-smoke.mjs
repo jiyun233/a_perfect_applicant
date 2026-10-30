@@ -66,7 +66,7 @@ const cleanCell = schedule.cells.find(
 check('found clean slot', Boolean(cleanCell), cleanCell && `${cleanCell.machineId} ${cleanCell.slotStart}`)
 
 const email = `api-test-${Date.now()}@example.com`
-const testStudentId = `${yearPrefix}44444444`
+const testStudentId = `${yearPrefix}40${String(Date.now()).slice(-6)}`
 const create = await request('/reservations', {
   method: 'POST',
   body: {
@@ -143,7 +143,7 @@ const bodies = [1, 2].map((n) => ({
   startTime: cleanCell.slotStart,
   endTime: cleanCell.slotEnd,
   partySize: 2,
-  studentId: `${yearPrefix}5555555${n}`,
+  studentId: `${yearPrefix}50${String(Date.now() + n).slice(-6)}`,
   applicantName: `并发测试 ${n}`,
   majorClass: '并发测试专业',
   nickname: `并发昵称${n}`,
@@ -168,7 +168,7 @@ const collision = await request('/reservations', {
     startTime: cleanCell.slotStart,
     endTime: cleanCell.slotEnd,
     partySize: 2,
-    studentId: `${yearPrefix}66666666`,
+    studentId: `${yearPrefix}40${String(Date.now() + 9).slice(-6)}`,
     applicantName: '取消后测试',
     majorClass: '取消测试专业',
     nickname: '取消测试昵称',

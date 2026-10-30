@@ -45,7 +45,7 @@ const makeBody = (cell, email, name, index) => ({
   startTime: cell.slotStart,
   endTime: cell.slotEnd,
   partySize: 1,
-  studentId: `${yearPrefix}7777777${index}`,
+  studentId: `${yearPrefix}40${String(Date.now() + index).slice(-6)}`,
   applicantName: name,
   majorClass: '管理测试专业',
   nickname: `昵称${index}`,

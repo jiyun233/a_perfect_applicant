@@ -209,7 +209,7 @@ function validate() {
   if (!form.machineId) next.machineId = '请选择机台'
   if (!form.startTime || !form.endTime) next.time = '请选择时段'
   if (form.endTime <= form.startTime) next.time = '结束时间必须晚于开始时间'
-  if (!/^2\d{9}$/.test(form.studentId.trim())) next.studentId = '不正确的学号'
+  if (!/^2\d(40|50)\d{6}$/.test(form.studentId.trim())) next.studentId = '不正确的学号'
   if (form.applicantName.trim().length < 1) next.applicantName = '请填写姓名'
   if (form.applicantName.trim().length > 40) next.applicantName = '姓名不能超过 40 个字符'
   if (form.majorClass.trim().length < 1) next.majorClass = '请填写专业班级'
@@ -335,11 +335,11 @@ function close() {
             v-model="form.studentId"
             inputmode="numeric"
             maxlength="10"
-            placeholder="2xxxxxxxxx"
+            placeholder="2x40xxxxxx"
             class="font-mono tracking-wide"
             autocomplete="off"
           />
-          <p class="text-[11px] text-muted-foreground">10 位学号，仅在校生可预约</p>
+          <p class="text-[11px] text-muted-foreground">10 位：入学年份 + 40/50 + 6 位序号，仅在校生可预约</p>
           <p v-if="errors.studentId" class="text-xs text-destructive">{{ errors.studentId }}</p>
         </div>
 

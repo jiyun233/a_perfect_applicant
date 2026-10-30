@@ -10,7 +10,7 @@ const email = `mobile-${Date.now()}@example.com`
 const shanghaiNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }))
 let enrollmentYear = shanghaiNow.getFullYear()
 if (shanghaiNow.getMonth() + 1 < 9) enrollmentYear -= 1
-const studentId = `${String(enrollmentYear).slice(-2)}${String(Date.now()).slice(-8)}`
+const studentId = `${String(enrollmentYear).slice(-2)}40${String(Date.now()).slice(-6)}`
 const nickname = '移动端测试昵称'
 
 const browser = await chromium.launch({ executablePath: chrome, headless: true })
