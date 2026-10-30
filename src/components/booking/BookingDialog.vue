@@ -3,11 +3,11 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import {
   CalendarDays,
+  Check,
   CheckCircle2,
   Clock3,
   LoaderCircle,
   Mail,
-  ShieldCheck,
   Users,
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
@@ -538,38 +538,42 @@ function close() {
           </div>
         </div>
 
-        <div v-if="captchaEnabled" class="space-y-2 sm:col-span-2">
-          <div class="rounded-lg border border-border bg-muted/30 px-3 py-3">
-            <div class="flex items-start justify-between gap-3">
-              <div class="min-w-0">
-                <p class="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                  <ShieldCheck class="size-4 text-primary" />
-                  人机验证
-                </p>
-                <p class="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  提交预约前需要完成腾讯云验证码，防止机器批量预约。
-                </p>
-              </div>
-              <Badge v-if="captchaVerified" variant="success" class="shrink-0">已验证</Badge>
-              <Button
-                v-else
-                type="button"
-                variant="outline"
-                size="sm"
-                class="shrink-0"
-                :disabled="captchaLoading"
-                @click="requestCaptcha"
-              >
-                <LoaderCircle v-if="captchaLoading" class="animate-spin" />
-                <ShieldCheck v-else class="size-4" />
-                开始验证
-              </Button>
-            </div>
-            <p v-if="captchaError" class="mt-2 text-xs text-destructive">{{ captchaError }}</p>
-            <p v-else-if="!captchaAppId" class="mt-2 text-xs text-destructive">
-              未配置 VITE_CAPTCHA_APP_ID，无法提交预约。
-            </p>
-          </div>
+        <div v-if="captchaEnabled" class="sm:col-span-2">
+          <button
+            type="button"
+            role="checkbox"
+            :aria-checked="captchaVerified"
+            aria-label="人机验证"
+            :disabled="captchaLoading || captchaVerified"
+            class="relative flex w-full items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors disabled:cursor-default"
+            :class="
+              captchaVerified
+                ? 'border-success/40 bg-success/5'
+                : 'border-border bg-card hover:border-primary/50'
+            "
+            @click.stop="requestCaptcha"
+          >
+            <span
+              class="grid size-5 shrink-0 place-items-center rounded border transition-colors"
+              :class="
+                captchaVerified
+                  ? 'border-success bg-success text-white'
+                  : 'border-input bg-card'
+              "
+            >
+              <Check v-if="captchaVerified" class="size-3.5" />
+              <LoaderCircle v-else-if="captchaLoading" class="size-3.5 animate-spin text-muted-foreground" />
+            </span>
+            <span class="text-sm font-medium text-foreground">人机验证</span>
+            <span v-if="captchaVerified" class="ml-auto text-xs text-success">已通过</span>
+            <span v-else class="ml-auto text-xs text-muted-foreground">
+              {{ captchaLoading ? '验证中…' : '点击验证' }}
+            </span>
+          </button>
+          <p v-if="captchaError" class="mt-2 text-xs text-destructive">{{ captchaError }}</p>
+          <p v-else-if="!captchaAppId" class="mt-2 text-xs text-destructive">
+            未配置 VITE_CAPTCHA_APP_ID，无法提交预约。
+          </p>
         </div>
       </div>
 
