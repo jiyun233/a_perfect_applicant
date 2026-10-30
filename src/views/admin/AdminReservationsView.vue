@@ -22,6 +22,7 @@ import { Card } from '@/components/ui/card'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { api, errorMessage } from '@/lib/api/client'
@@ -42,6 +43,15 @@ const machinesQuery = useQuery({
   queryFn: () => api.adminMachines(),
   staleTime: 60_000,
 })
+
+const statusOptions = [
+  { value: '', label: '全部状态' },
+  { value: 'pending', label: '待审批' },
+  { value: 'approved', label: '已通过' },
+  { value: 'rejected', label: '未通过' },
+  { value: 'cancelled', label: '已取消' },
+  { value: 'expired', label: '已过期' },
+]
 
 const filters = reactive({ date: '', status: initialStatus, machineId: '', q: '' })
 const applied = reactive({ ...filters })
@@ -66,6 +76,10 @@ const listQuery = useQuery({
 
 const reservations = computed(() => listQuery.data.value?.reservations ?? [])
 const machines = computed(() => machinesQuery.data.value?.machines ?? [])
+const machineOptions = computed(() => [
+  { value: '', label: '全部机台' },
+  ...machines.value.map((machine) => ({ value: machine.id, label: machine.name })),
+])
 const listLoading = computed(() => listQuery.isPending.value && !listQuery.data.value)
 const listError = computed(() => listQuery.isError.value)
 
@@ -246,29 +260,11 @@ function refreshDetail() {
         </div>
         <div class="space-y-1.5">
           <Label for="filter-status" class="text-xs text-muted-foreground">状态</Label>
-          <select
-            id="filter-status"
-            v-model="filters.status"
-            class="h-10 w-full rounded-lg border border-input bg-card px-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
-          >
-            <option value="">全部状态</option>
-            <option value="pending">待审批</option>
-            <option value="approved">已通过</option>
-            <option value="rejected">未通过</option>
-            <option value="cancelled">已取消</option>
-            <option value="expired">已过期</option>
-          </select>
+          <Select id="filter-status" v-model="filters.status" :options="statusOptions" />
         </div>
         <div class="space-y-1.5">
           <Label for="filter-machine" class="text-xs text-muted-foreground">机台</Label>
-          <select
-            id="filter-machine"
-            v-model="filters.machineId"
-            class="h-10 w-full rounded-lg border border-input bg-card px-2.5 text-sm text-foreground focus:border-primary focus:outline-none"
-          >
-            <option value="">全部机台</option>
-            <option v-for="machine in machines" :key="machine.id" :value="machine.id">{{ machine.name }}</option>
-          </select>
+          <Select id="filter-machine" v-model="filters.machineId" :options="machineOptions" />
         </div>
         <div class="col-span-2 space-y-1.5 sm:col-span-1">
           <Label for="filter-search" class="text-xs text-muted-foreground">搜索</Label>

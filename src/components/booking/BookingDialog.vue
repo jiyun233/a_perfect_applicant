@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { api, ApiError, errorMessage } from '@/lib/api/client'
 import type { Schedule, ScheduleCell } from '@/lib/api/types'
@@ -23,6 +24,9 @@ import { formatDateLong } from '@/lib/date'
 const props = defineProps<{
   open: boolean
   schedule: Schedule
+  date: string
+  dates: string[]
+  dateLoading?: boolean
   initialMachineId?: string
   initialStartTime?: string
   initialEndTime?: string
@@ -31,6 +35,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:open': [value: boolean]
   success: []
+  'update:date': [value: string]
 }>()
 
 const queryClient = useQueryClient()
@@ -55,7 +60,7 @@ const mutation = useMutation({
   mutationFn: () =>
     api.createReservation({
       machineId: form.machineId,
-      date: props.schedule.date,
+      date: props.date,
       startTime: form.startTime,
       endTime: form.endTime,
       partySize: Number(form.partySize),
@@ -84,6 +89,25 @@ const mutation = useMutation({
 })
 
 const isSubmitting = computed(() => mutation.isPending.value)
+const dateOptions = computed(() =>
+  props.dates.map((date) => ({ value: date, label: formatDateLong(date) })),
+)
+const machineOptions = computed(() =>
+  props.schedule.machines.map((machine) => ({
+    value: machine.id,
+    label: `${machine.name} · ${machine.softwareVersion}`,
+  })),
+)
+const startTimeOptions = computed(() =>
+  startOptions.value.map((slot) => ({ value: slot.startTime, label: slot.startTime })),
+)
+const endTimeOptions = computed(() =>
+  endOptions.value.map((end) => ({ value: end, label: end })),
+)
+
+function onDateChange(date: string) {
+  if (date && date !== props.date) emit('update:date', date)
+}
 const selectedMachine = computed(() =>
   props.schedule.machines.find((machine) => machine.id === form.machineId),
 )
@@ -142,6 +166,8 @@ const errors = computed(() => ({ ...serverFields.value, ...localErrors.value }))
 const canSubmit = computed(
   () =>
     !isSubmitting.value &&
+    !props.dateLoading &&
+    props.schedule.date === props.date &&
     startOptions.value.length > 0 &&
     Boolean(form.startTime) &&
     Boolean(form.endTime) &&
@@ -192,6 +218,23 @@ watch(
 watch(
   () => form.machineId,
   () => {
+    const options = startOptions.value
+    if (!options.some((slot) => slot.startTime === form.startTime)) {
+      form.startTime = options[0]?.startTime ?? ''
+      form.endTime = options[0]?.endTime ?? ''
+    }
+  },
+)
+
+watch(
+  () => props.schedule.date,
+  () => {
+    if (!props.open) return
+    const machine = props.schedule.machines.find((item) => item.id === form.machineId)
+    if (!machine) {
+      form.machineId = props.schedule.machines[0]?.id ?? ''
+      return
+    }
     const options = startOptions.value
     if (!options.some((slot) => slot.startTime === form.startTime)) {
       form.startTime = options[0]?.startTime ?? ''
@@ -257,7 +300,7 @@ function close() {
       <div class="mb-5 flex items-center gap-3 rounded-lg border border-border bg-muted/50 px-3 py-2.5">
         <CalendarDays class="size-4 shrink-0 text-primary" />
         <div class="min-w-0">
-          <p class="text-sm font-medium text-foreground">{{ formatDateLong(props.schedule.date) }}</p>
+          <p class="text-sm font-medium text-foreground">{{ formatDateLong(props.date) }}</p>
           <p class="mt-0.5 text-xs text-muted-foreground">
             {{ props.schedule.openTime }}–{{ props.schedule.closeTime }}
           </p>
@@ -273,17 +316,23 @@ function close() {
       </div>
 
       <div class="grid gap-4 sm:grid-cols-2">
+        <div class="space-y-2 sm:col-span-2">
+          <Label for="booking-date">日期</Label>
+          <Select
+            id="booking-date"
+            :model-value="props.date"
+            :options="dateOptions"
+            aria-label="预约日期"
+            @update:model-value="onDateChange"
+          />
+          <p v-if="props.dateLoading || props.schedule.date !== props.date" class="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <LoaderCircle class="size-3 animate-spin" />正在加载该日期的可约时段…
+          </p>
+        </div>
+
         <div class="space-y-2">
           <Label for="booking-machine">机台</Label>
-          <select
-            id="booking-machine"
-            v-model="form.machineId"
-            class="flex h-11 w-full rounded-lg border border-input bg-card px-3 text-base text-foreground focus:border-primary focus:outline-none sm:h-10 sm:text-sm"
-          >
-            <option v-for="machine in props.schedule.machines" :key="machine.id" :value="machine.id">
-              {{ machine.name }} · {{ machine.softwareVersion }}
-            </option>
-          </select>
+          <Select id="booking-machine" v-model="form.machineId" :options="machineOptions" />
           <p v-if="errors.machineId" class="text-xs text-destructive">{{ errors.machineId }}</p>
         </div>
 
@@ -305,26 +354,12 @@ function close() {
 
         <div class="space-y-2">
           <Label for="booking-start">开始时间</Label>
-          <select
-            id="booking-start"
-            v-model="form.startTime"
-            class="flex h-11 w-full rounded-lg border border-input bg-card px-3 text-base text-foreground focus:border-primary focus:outline-none sm:h-10 sm:text-sm"
-          >
-            <option v-for="slot in startOptions" :key="slot.startTime" :value="slot.startTime">
-              {{ slot.startTime }}
-            </option>
-          </select>
+          <Select id="booking-start" v-model="form.startTime" :options="startTimeOptions" />
         </div>
 
         <div class="space-y-2">
           <Label for="booking-end">结束时间</Label>
-          <select
-            id="booking-end"
-            v-model="form.endTime"
-            class="flex h-11 w-full rounded-lg border border-input bg-card px-3 text-base text-foreground focus:border-primary focus:outline-none sm:h-10 sm:text-sm"
-          >
-            <option v-for="end in endOptions" :key="end" :value="end">{{ end }}</option>
-          </select>
+          <Select id="booking-end" v-model="form.endTime" :options="endTimeOptions" />
           <p v-if="errors.time" class="text-xs text-destructive">{{ errors.time }}</p>
         </div>
 

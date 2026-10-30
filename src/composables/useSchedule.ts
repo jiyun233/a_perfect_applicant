@@ -1,5 +1,5 @@
 import { type Ref, computed } from 'vue'
-import { useQuery } from '@tanstack/vue-query'
+import { keepPreviousData, useQuery } from '@tanstack/vue-query'
 import { api } from '@/lib/api/client'
 import type { ScheduleCell } from '@/lib/api/types'
 
@@ -8,6 +8,7 @@ export function useScheduleQuery(date: Ref<string>) {
     queryKey: computed(() => ['schedule', date.value]),
     queryFn: () => api.getSchedule(date.value),
     enabled: computed(() => Boolean(date.value)),
+    placeholderData: keepPreviousData,
     refetchInterval: 30_000,
     staleTime: 8_000,
     retry: 1,

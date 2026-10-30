@@ -407,10 +407,13 @@ function machineTone(machine: Machine) {
       v-if="schedule"
       v-model:open="dialogOpen"
       :schedule="schedule"
+      :date="selectedDate"
+      :dates="days"
+      :date-loading="scheduleQuery.isFetching.value"
       :initial-machine-id="initialMachineId"
       :initial-start-time="initialStartTime"
       :initial-end-time="initialEndTime"
-
+      @update:date="setDate"
     />
   </div>
 </template>
