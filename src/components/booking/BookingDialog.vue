@@ -7,6 +7,7 @@ import {
   Clock3,
   LoaderCircle,
   Mail,
+  ShieldCheck,
   Users,
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
@@ -56,6 +57,95 @@ const localErrors = ref<Record<string, string>>({})
 const serverFields = ref<Record<string, string>>({})
 const succeeded = ref(false)
 
+const captchaAppId = String(import.meta.env.VITE_CAPTCHA_APP_ID || '')
+const captchaEnabled = import.meta.env.VITE_CAPTCHA_ENABLED
+  ? import.meta.env.VITE_CAPTCHA_ENABLED !== 'false'
+  : import.meta.env.PROD
+const captchaVerified = ref(false)
+const captchaLoading = ref(false)
+const captchaError = ref('')
+const captchaTicket = ref('')
+const captchaRandstr = ref('')
+
+let captchaScriptPromise: Promise<void> | null = null
+
+type TencentCaptchaResult = {
+  ret: number
+  ticket?: string | null
+  randstr?: string | null
+  errorCode?: number
+  errorMessage?: string
+}
+
+type TencentCaptchaCtor = new (
+  appId: string,
+  callback: (result: TencentCaptchaResult) => void,
+  options?: Record<string, unknown>,
+) => { show: () => void; destroy: () => void }
+
+function loadCaptchaScript(): Promise<void> {
+  const existing = (window as unknown as { TencentCaptcha?: TencentCaptchaCtor }).TencentCaptcha
+  if (existing) return Promise.resolve()
+  if (captchaScriptPromise) return captchaScriptPromise
+
+  captchaScriptPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = 'https://turing.captcha.qcloud.com/TCaptcha.js'
+    script.async = true
+    script.onload = () => resolve()
+    script.onerror = () => {
+      captchaScriptPromise = null
+      reject(new Error('captcha script failed to load'))
+    }
+    document.head.appendChild(script)
+  })
+  return captchaScriptPromise
+}
+
+function resetCaptcha() {
+  captchaVerified.value = false
+  captchaTicket.value = ''
+  captchaRandstr.value = ''
+  captchaLoading.value = false
+}
+
+function openCaptcha() {
+  captchaError.value = ''
+  if (!captchaEnabled) return
+  if (!captchaAppId) {
+    captchaError.value = '未配置验证码 AppID，无法提交预约'
+    return
+  }
+  captchaLoading.value = true
+  void loadCaptchaScript()
+    .then(() => {
+      const Ctor = (window as unknown as { TencentCaptcha?: TencentCaptchaCtor }).TencentCaptcha
+      if (!Ctor) throw new Error('TencentCaptcha is unavailable')
+      const instance = new Ctor(captchaAppId, (result) => {
+        captchaLoading.value = false
+        if (result.ret === 0 && result.ticket && result.randstr && !result.errorCode) {
+          captchaVerified.value = true
+          captchaTicket.value = result.ticket
+          captchaRandstr.value = result.randstr
+          captchaError.value = ''
+          toast.success('人机验证通过')
+          return
+        }
+        if (result.ret !== 2) {
+          captchaError.value = result.errorMessage || '验证未通过，请重试'
+        }
+      }, { userLanguage: 'zh-cn' })
+      instance.show()
+    })
+    .catch(() => {
+      captchaLoading.value = false
+      captchaError.value = '验证码加载失败，请检查网络后重试'
+    })
+}
+
+const captchaReady = computed(() => !captchaEnabled || captchaVerified.value)
+
+
 const mutation = useMutation({
   mutationFn: () =>
     api.createReservation({
@@ -68,6 +158,8 @@ const mutation = useMutation({
       applicantName: form.applicantName.trim(),
       majorClass: form.majorClass.trim(),
       nickname: form.nickname.trim(),
+      captchaTicket: captchaTicket.value,
+      captchaRandstr: captchaRandstr.value,
       email: form.email.trim(),
       note: form.note.trim(),
     }),
@@ -84,6 +176,7 @@ const mutation = useMutation({
     if (error instanceof ApiError && error.fields) {
       serverFields.value = error.fields
     }
+    resetCaptcha()
     toast.error('预约没有提交成功', { description: errorMessage(error) })
   },
 })
@@ -168,6 +261,8 @@ const canSubmit = computed(
     !isSubmitting.value &&
     !props.dateLoading &&
     props.schedule.date === props.date &&
+    captchaReady.value &&
+    !captchaLoading.value &&
     startOptions.value.length > 0 &&
     Boolean(form.startTime) &&
     Boolean(form.endTime) &&
@@ -177,10 +272,15 @@ const canSubmit = computed(
 watch(
   () => props.open,
   (open) => {
-    if (!open) return
+    if (!open) {
+      captchaLoading.value = false
+      return
+    }
     succeeded.value = false
     localErrors.value = {}
     serverFields.value = {}
+    captchaError.value = ''
+    resetCaptcha()
     mutation.reset()
     const machine =
       props.schedule.machines.find((item) => item.id === props.initialMachineId) ??
@@ -252,6 +352,7 @@ function validate() {
   if (!form.machineId) next.machineId = '请选择机台'
   if (!form.startTime || !form.endTime) next.time = '请选择时段'
   if (form.endTime <= form.startTime) next.time = '结束时间必须晚于开始时间'
+  if (captchaEnabled && !captchaVerified.value) next.captcha = '请先完成人机验证'
   if (!/^2\d(40|50)\d{6}$/.test(form.studentId.trim())) next.studentId = '不正确的学号'
   if (form.applicantName.trim().length < 1) next.applicantName = '请填写姓名'
   if (form.applicantName.trim().length > 40) next.applicantName = '姓名不能超过 40 个字符'
@@ -413,6 +514,40 @@ function close() {
           <div class="flex justify-between gap-2">
             <p v-if="errors.note" class="text-xs text-destructive">{{ errors.note }}</p>
             <span class="ml-auto text-[11px] text-muted-foreground">{{ form.note.length }}/500</span>
+          </div>
+        </div>
+
+        <div v-if="captchaEnabled" class="space-y-2 sm:col-span-2">
+          <div class="rounded-lg border border-border bg-muted/30 px-3 py-3">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                  <ShieldCheck class="size-4 text-primary" />
+                  人机验证
+                </p>
+                <p class="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  提交预约前需要完成腾讯云验证码，防止机器批量预约。
+                </p>
+              </div>
+              <Badge v-if="captchaVerified" variant="success" class="shrink-0">已验证</Badge>
+              <Button
+                v-else
+                type="button"
+                variant="outline"
+                size="sm"
+                class="shrink-0"
+                :disabled="captchaLoading"
+                @click="openCaptcha"
+              >
+                <LoaderCircle v-if="captchaLoading" class="animate-spin" />
+                <ShieldCheck v-else class="size-4" />
+                开始验证
+              </Button>
+            </div>
+            <p v-if="captchaError" class="mt-2 text-xs text-destructive">{{ captchaError }}</p>
+            <p v-else-if="!captchaAppId" class="mt-2 text-xs text-destructive">
+              未配置 VITE_CAPTCHA_APP_ID，无法提交预约。
+            </p>
           </div>
         </div>
       </div>

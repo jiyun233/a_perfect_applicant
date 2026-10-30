@@ -19,10 +19,13 @@ Output: `dist/`.
 - Output directory: `dist`
 - Node.js: `22.17.1`
 
-Environment variable:
+Environment variables:
 
 ```env
 VITE_API_BASE_URL=https://api.example.com/api/v1
+VITE_CAPTCHA_APP_ID=your-captcha-app-id
 ```
+
+`VITE_CAPTCHA_ENABLED` defaults to true in production. Set it to `false` only for local development.
 
 The backend URL must include `/api/v1`. The app uses hash routing, so no SPA rewrite is required.

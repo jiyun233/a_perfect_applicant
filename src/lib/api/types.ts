@@ -118,6 +118,8 @@ export interface CreateReservationInput {
   applicantName: string
   majorClass: string
   nickname: string
+  captchaTicket: string
+  captchaRandstr: string
   email: string
   note: string
 }
