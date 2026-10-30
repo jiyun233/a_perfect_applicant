@@ -524,20 +524,6 @@ function close() {
           <p v-if="errors.email" class="text-xs text-destructive">{{ errors.email }}</p>
         </div>
 
-        <div class="space-y-2 sm:col-span-2">
-          <Label for="booking-note">备注 <span class="font-normal text-muted-foreground">（选填）</span></Label>
-          <Textarea
-            id="booking-note"
-            v-model="form.note"
-            maxlength="500"
-            placeholder="如有特殊需求可以在这里说明"
-          />
-          <div class="flex justify-between gap-2">
-            <p v-if="errors.note" class="text-xs text-destructive">{{ errors.note }}</p>
-            <span class="ml-auto text-[11px] text-muted-foreground">{{ form.note.length }}/500</span>
-          </div>
-        </div>
-
         <div v-if="captchaEnabled" class="sm:col-span-2">
           <button
             type="button"
@@ -574,6 +560,20 @@ function close() {
           <p v-else-if="!captchaAppId" class="mt-2 text-xs text-destructive">
             未配置 VITE_CAPTCHA_APP_ID，无法提交预约。
           </p>
+        </div>
+
+        <div class="space-y-2 sm:col-span-2">
+          <Label for="booking-note">备注 <span class="font-normal text-muted-foreground">（选填）</span></Label>
+          <Textarea
+            id="booking-note"
+            v-model="form.note"
+            maxlength="500"
+            placeholder="如有特殊需求可以在这里说明"
+          />
+          <div class="flex justify-between gap-2">
+            <p v-if="errors.note" class="text-xs text-destructive">{{ errors.note }}</p>
+            <span class="ml-auto text-[11px] text-muted-foreground">{{ form.note.length }}/500</span>
+          </div>
         </div>
       </div>
 
