@@ -36,7 +36,7 @@ const route = useRoute()
 const routeStatus = typeof route.query.status === 'string' ? route.query.status : ''
 const initialStatus = ['pending', 'approved', 'rejected', 'cancelled', 'expired'].includes(routeStatus)
   ? routeStatus
-  : 'pending'
+  : ''
 
 const machinesQuery = useQuery({
   queryKey: ['admin-machines'],
@@ -112,7 +112,7 @@ function applyFilters() {
 }
 
 function resetFilters() {
-  Object.assign(filters, { date: '', status: 'pending', machineId: '', q: '' })
+  Object.assign(filters, { date: '', status: '', machineId: '', q: '' })
   applyFilters()
 }
 
@@ -137,15 +137,15 @@ function statusVariant(status: Reservation['status']) {
 }
 
 function canApprove(reservation: Reservation | null) {
-  return reservation?.status === 'pending'
+  return Boolean(reservation && reservation.status !== 'approved' && reservation.status !== 'expired')
 }
 
 function canReject(reservation: Reservation | null) {
-  return reservation?.status === 'pending'
+  return Boolean(reservation && reservation.status !== 'rejected')
 }
 
 function canCancel(reservation: Reservation | null) {
-  return reservation?.status === 'pending' || reservation?.status === 'approved'
+  return Boolean(reservation && reservation.status !== 'cancelled')
 }
 
 async function invalidateAll() {
@@ -244,7 +244,7 @@ function refreshDetail() {
     <section class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <h1 class="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">预约审批</h1>
-        <p class="mt-1.5 text-sm text-muted-foreground">审批后自动发送邮件，并同步成员端状态。</p>
+        <p class="mt-1.5 text-sm text-muted-foreground">状态变更后自动发送邮件，并同步成员端状态。</p>
       </div>
       <Button variant="outline" size="sm" :disabled="listQuery.isFetching.value" @click="listQuery.refetch()">
         <RefreshCw :class="['size-4', listQuery.isFetching.value && 'animate-spin']" />
@@ -254,20 +254,20 @@ function refreshDetail() {
 
     <Card class="p-3">
       <form class="grid grid-cols-2 items-end gap-3 md:grid-cols-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_auto]" @submit.prevent="applyFilters">
-        <div class="space-y-1.5">
-          <Label for="filter-date" class="text-xs text-muted-foreground">日期</Label>
+        <div class="space-y-2">
+          <Label for="filter-date" >日期</Label>
           <Input id="filter-date" v-model="filters.date" type="date" />
         </div>
-        <div class="space-y-1.5">
-          <Label for="filter-status" class="text-xs text-muted-foreground">状态</Label>
-          <Select id="filter-status" v-model="filters.status" :options="statusOptions" />
+        <div class="space-y-2">
+          <Label for="filter-status" >状态</Label>
+          <Select id="filter-status" v-model="filters.status" :options="statusOptions" aria-label="按状态筛选" />
         </div>
-        <div class="space-y-1.5">
-          <Label for="filter-machine" class="text-xs text-muted-foreground">机台</Label>
-          <Select id="filter-machine" v-model="filters.machineId" :options="machineOptions" />
+        <div class="space-y-2">
+          <Label for="filter-machine" >机台</Label>
+          <Select id="filter-machine" v-model="filters.machineId" :options="machineOptions" aria-label="按机台筛选" />
         </div>
         <div class="col-span-2 space-y-1.5 xl:col-span-1">
-          <Label for="filter-search" class="text-xs text-muted-foreground">搜索</Label>
+          <Label for="filter-search" >搜索</Label>
           <div class="relative">
             <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input id="filter-search" v-model="filters.q" class="pl-9" placeholder="姓名、学号、昵称或邮箱" />
@@ -433,7 +433,7 @@ function refreshDetail() {
             <p class="mt-0.5 text-xs text-muted-foreground">{{ detail.startTime }}–{{ detail.endTime }} · {{ detail.partySize }} 人</p>
           </div>
           <div class="rounded-lg border border-border p-3 sm:col-span-2">
-            <p class="text-xs text-muted-foreground">机台与备注</p>
+            <p >机台与备注</p>
             <p class="mt-1 text-sm text-foreground">{{ detail.machine.name }} · {{ detail.machine.game }}</p>
             <p class="mt-0.5 text-xs text-muted-foreground">版本 {{ detail.machine.softwareVersion || '—' }} · {{ detail.machine.location || '未设置位置' }}</p>
             <p v-if="detail.note" class="mt-2 rounded bg-muted px-2.5 py-2 text-xs text-muted-foreground">{{ detail.note }}</p>
@@ -536,7 +536,7 @@ function refreshDetail() {
             <Check class="size-4" /> 通过预约
           </Button>
           <Button
-            v-if="canCancel(detail) && !canApprove(detail)"
+            v-if="canCancel(detail)"
             variant="destructive"
             class="w-full sm:w-auto"
             @click="confirmAction = 'cancel'; rejectMode = false"
