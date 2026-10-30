@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { marked } from 'marked'
 import {
+  AlertCircle,
   CalendarDays,
   CheckCircle2,
   Clock3,
@@ -58,6 +59,9 @@ const form = reactive({
 const localErrors = ref<Record<string, string>>({})
 const serverFields = ref<Record<string, string>>({})
 const succeeded = ref(false)
+const failed = ref(false)
+const failureMessage = ref('')
+const failureRequestId = ref('')
 
 const captchaAppId = String(import.meta.env.VITE_CAPTCHA_APP_ID || '')
 const captchaEnabled = import.meta.env.VITE_CAPTCHA_ENABLED
@@ -200,19 +204,22 @@ const mutation = useMutation({
     }),
   onSuccess: async () => {
     succeeded.value = true
+    failed.value = false
+    failureMessage.value = ''
+    failureRequestId.value = ''
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['schedule'] }),
       queryClient.invalidateQueries({ queryKey: ['machines'] }),
     ])
     emit('success')
-    toast.success('预约已提交', { description: '管理员审批后会向你的邮箱发送结果。' })
   },
   onError: (error) => {
-    if (error instanceof ApiError && error.fields) {
-      serverFields.value = error.fields
-    }
+    failed.value = true
+    succeeded.value = false
+    failureMessage.value = errorMessage(error)
+    failureRequestId.value = error instanceof ApiError ? error.requestId || '' : ''
+    serverFields.value = error instanceof ApiError && error.fields ? error.fields : {}
     resetCaptcha()
-    toast.error('预约没有提交成功', { description: errorMessage(error) })
   },
 })
 
@@ -291,6 +298,25 @@ const maxPartySize = computed(() =>
 )
 
 const errors = computed(() => ({ ...serverFields.value, ...localErrors.value }))
+const fieldLabels: Record<string, string> = {
+  captcha: '人机验证',
+  machineId: '机台',
+  time: '预约时段',
+  partySize: '人数',
+  studentId: '学号',
+  applicantName: '姓名',
+  majorClass: '专业班级',
+  nickname: '昵称',
+  email: '邮箱',
+  note: '备注',
+}
+const failureDetails = computed(() =>
+  Object.entries(serverFields.value).map(([field, message]) => ({
+    field,
+    label: fieldLabels[field] || field,
+    message,
+  })),
+)
 const canSubmit = computed(
   () =>
     !isSubmitting.value &&
@@ -312,6 +338,9 @@ watch(
       return
     }
     succeeded.value = false
+    failed.value = false
+    failureMessage.value = ''
+    failureRequestId.value = ''
     step.value = 'form'
     mobileStep.value = 1
     stopRulesTimer()
@@ -438,20 +467,45 @@ function close() {
   <Dialog
     v-if="!captchaLoading"
     :open="props.open"
-    :title="succeeded ? '预约成功' : step === 'rules' ? '预约前请阅读' : '预约机台'"
+    :title="
+      succeeded ? '预约成功' : failed ? '预约失败' : step === 'rules' ? '预约前请阅读' : '预约机台'
+    "
     :description="
       succeeded
         ? '审批结果会发送到你的邮箱，可使用学号查询预约状态。'
-        : step === 'rules'
-          ? '倒计时结束后才能继续人机验证。'
-          : '选择机台与连续时段，填写信息后提交审批。'
+        : failed
+          ? '预约没有提交成功，请查看失败原因。'
+          : step === 'rules'
+            ? '倒计时结束后才能继续人机验证。'
+            : '选择机台与连续时段，填写信息后提交审批。'
     "
     :persistent="isSubmitting || captchaLoading"
     fullscreen
     class="booking-dialog max-w-2xl"
     @update:open="emit('update:open', $event)"
   >
-    <template v-if="!succeeded && step === 'form'">
+    <template v-if="failed">
+      <div class="py-3">
+        <div class="mx-auto grid size-12 place-items-center rounded-full bg-destructive/10">
+          <AlertCircle class="size-6 text-destructive" />
+        </div>
+        <p class="mt-3 text-center text-base font-medium text-foreground">预约没有提交成功</p>
+        <p class="mt-3 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm leading-relaxed text-destructive">
+          {{ failureMessage }}
+        </p>
+        <ul v-if="failureDetails.length > 1" class="mt-3 space-y-1.5 rounded-lg border border-border px-3 py-2.5">
+          <li v-for="item in failureDetails" :key="item.field" class="text-sm text-muted-foreground">
+            <span class="font-medium text-foreground">{{ item.label }}</span>：{{ item.message }}
+          </li>
+        </ul>
+        <p v-if="failureRequestId" class="mt-3 break-all text-center text-[11px] text-muted-foreground">
+          请求 ID：{{ failureRequestId }}
+        </p>
+        <p class="mt-3 text-center text-xs text-muted-foreground">返回修改信息后可以重新提交。</p>
+      </div>
+    </template>
+
+    <template v-else-if="!succeeded && step === 'form'">
       <div class="mb-5 flex items-center gap-3 rounded-lg border border-border bg-muted/50 px-3 py-2.5">
         <CalendarDays class="size-4 shrink-0 text-primary" />
         <div class="min-w-0">
@@ -621,7 +675,13 @@ function close() {
     </template>
 
     <template #footer>
-      <template v-if="!succeeded && step === 'form'">
+      <template v-if="failed">
+        <Button variant="ghost" class="w-full sm:w-auto" :disabled="isSubmitting" @click="close">
+          关闭
+        </Button>
+        <Button class="w-full sm:w-auto" @click="failed = false; step = 'form'">返回修改</Button>
+      </template>
+      <template v-else-if="!succeeded && step === 'form'">
         <Button
           v-if="!isMobile || mobileStep === 1"
           variant="ghost"
