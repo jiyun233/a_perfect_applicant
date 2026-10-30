@@ -29,3 +29,7 @@ VITE_CAPTCHA_APP_ID=your-captcha-app-id
 `VITE_CAPTCHA_ENABLED` defaults to true in production. Set it to `false` only for local development.
 
 The backend URL must include `/api/v1`. The app uses hash routing, so no SPA rewrite is required.
+
+## Booking rules
+
+Edit `src/content/booking-rules.md` to change the rules shown before Tencent Captcha. The dialog enforces a 5-second countdown before the captcha button is enabled. Rebuild the frontend after editing the Markdown file.

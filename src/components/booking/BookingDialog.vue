@@ -17,10 +17,12 @@ import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
+import RulesDialog from '@/components/booking/RulesDialog.vue'
 import { Textarea } from '@/components/ui/textarea'
 import { api, ApiError, errorMessage } from '@/lib/api/client'
 import type { Schedule, ScheduleCell } from '@/lib/api/types'
 import { formatDateLong } from '@/lib/date'
+import bookingRules from '@/content/booking-rules.md?raw'
 
 const props = defineProps<{
   open: boolean
@@ -66,6 +68,8 @@ const captchaLoading = ref(false)
 const captchaError = ref('')
 const captchaTicket = ref('')
 const captchaRandstr = ref('')
+const rulesOpen = ref(false)
+const rulesAccepted = ref(false)
 
 let captchaScriptPromise: Promise<void> | null = null
 
@@ -107,6 +111,20 @@ function resetCaptcha() {
   captchaTicket.value = ''
   captchaRandstr.value = ''
   captchaLoading.value = false
+}
+
+function requestCaptcha() {
+  if (!captchaEnabled) return
+  if (!rulesAccepted.value) {
+    rulesOpen.value = true
+    return
+  }
+  openCaptcha()
+}
+
+function onRulesAccepted() {
+  rulesAccepted.value = true
+  window.setTimeout(() => openCaptcha(), 120)
 }
 
 function openCaptcha() {
@@ -274,9 +292,12 @@ watch(
   (open) => {
     if (!open) {
       captchaLoading.value = false
+      rulesOpen.value = false
       return
     }
     succeeded.value = false
+    rulesOpen.value = false
+    rulesAccepted.value = false
     localErrors.value = {}
     serverFields.value = {}
     captchaError.value = ''
@@ -537,7 +558,7 @@ function close() {
                 size="sm"
                 class="shrink-0"
                 :disabled="captchaLoading"
-                @click="openCaptcha"
+                @click="requestCaptcha"
               >
                 <LoaderCircle v-if="captchaLoading" class="animate-spin" />
                 <ShieldCheck v-else class="size-4" />
@@ -590,4 +611,6 @@ function close() {
       <Button v-else class="w-full sm:w-auto" @click="close">完成</Button>
     </template>
   </Dialog>
+
+  <RulesDialog v-model:open="rulesOpen" :markdown="bookingRules" @accept="onRulesAccepted" />
 </template>
