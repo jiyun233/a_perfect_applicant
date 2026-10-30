@@ -3,7 +3,6 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import {
   CalendarDays,
-  Check,
   CheckCircle2,
   Clock3,
   LoaderCircle,
@@ -65,7 +64,6 @@ const captchaEnabled = import.meta.env.VITE_CAPTCHA_ENABLED
   : import.meta.env.PROD
 const captchaVerified = ref(false)
 const captchaLoading = ref(false)
-const captchaError = ref('')
 const captchaTicket = ref('')
 const captchaRandstr = ref('')
 const rulesOpen = ref(false)
@@ -113,25 +111,18 @@ function resetCaptcha() {
   captchaLoading.value = false
 }
 
-function requestCaptcha() {
-  if (!captchaEnabled) return
-  if (!rulesAccepted.value) {
-    rulesOpen.value = true
-    return
-  }
-  openCaptcha()
-}
-
 function onRulesAccepted() {
   rulesAccepted.value = true
   window.setTimeout(() => openCaptcha(), 120)
 }
 
 function openCaptcha() {
-  captchaError.value = ''
-  if (!captchaEnabled) return
+  if (!captchaEnabled) {
+    mutation.mutate()
+    return
+  }
   if (!captchaAppId) {
-    captchaError.value = '未配置验证码 AppID，无法提交预约'
+    toast.error('验证码未配置', { description: '缺少 VITE_CAPTCHA_APP_ID，无法提交预约。' })
     return
   }
   captchaLoading.value = true
@@ -145,25 +136,21 @@ function openCaptcha() {
           captchaVerified.value = true
           captchaTicket.value = result.ticket
           captchaRandstr.value = result.randstr
-          captchaError.value = ''
           toast.success('人机验证通过')
+          if (validate()) mutation.mutate()
           return
         }
         if (result.ret !== 2) {
-          captchaError.value = result.errorMessage || '验证未通过，请重试'
+          toast.error('人机验证未通过', { description: result.errorMessage || '请重试。' })
         }
       }, { userLanguage: 'zh-cn' })
       instance.show()
     })
     .catch(() => {
       captchaLoading.value = false
-      captchaError.value = '验证码加载失败，请检查网络后重试'
+      toast.error('验证码加载失败', { description: '请检查网络后重试。' })
     })
 }
-
-const captchaReady = computed(() => !captchaEnabled || captchaVerified.value)
-
-
 const mutation = useMutation({
   mutationFn: () =>
     api.createReservation({
@@ -279,7 +266,6 @@ const canSubmit = computed(
     !isSubmitting.value &&
     !props.dateLoading &&
     props.schedule.date === props.date &&
-    captchaReady.value &&
     !captchaLoading.value &&
     startOptions.value.length > 0 &&
     Boolean(form.startTime) &&
@@ -300,7 +286,6 @@ watch(
     rulesAccepted.value = false
     localErrors.value = {}
     serverFields.value = {}
-    captchaError.value = ''
     resetCaptcha()
     mutation.reset()
     const machine =
@@ -373,7 +358,6 @@ function validate() {
   if (!form.machineId) next.machineId = '请选择机台'
   if (!form.startTime || !form.endTime) next.time = '请选择时段'
   if (form.endTime <= form.startTime) next.time = '结束时间必须晚于开始时间'
-  if (captchaEnabled && !captchaVerified.value) next.captcha = '请先完成人机验证'
   if (!/^2\d(40|50)\d{6}$/.test(form.studentId.trim())) next.studentId = '不正确的学号'
   if (form.applicantName.trim().length < 1) next.applicantName = '请填写姓名'
   if (form.applicantName.trim().length > 40) next.applicantName = '姓名不能超过 40 个字符'
@@ -396,6 +380,14 @@ function validate() {
 function submit() {
   serverFields.value = {}
   if (!validate()) return
+  if (captchaEnabled && !captchaVerified.value) {
+    if (!rulesAccepted.value) {
+      rulesOpen.value = true
+      return
+    }
+    openCaptcha()
+    return
+  }
   mutation.mutate()
 }
 
@@ -408,7 +400,7 @@ function close() {
 <template>
   <Dialog
     :open="props.open"
-    :title="succeeded ? '预约已提交' : '预约机台'"
+    :title="succeeded ? '预约成功' : '预约机台'"
     :description="
       succeeded
         ? '审批结果会发送到你的邮箱，可使用学号查询预约状态。'
@@ -522,44 +514,6 @@ function close() {
           <Label for="booking-email">邮箱</Label>
           <Input id="booking-email" v-model="form.email" type="email" maxlength="254" placeholder="用于接收审批结果" />
           <p v-if="errors.email" class="text-xs text-destructive">{{ errors.email }}</p>
-        </div>
-
-        <div v-if="captchaEnabled" class="sm:col-span-2">
-          <button
-            type="button"
-            role="checkbox"
-            :aria-checked="captchaVerified"
-            aria-label="人机验证"
-            :disabled="captchaLoading || captchaVerified"
-            class="relative flex w-full items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors disabled:cursor-default"
-            :class="
-              captchaVerified
-                ? 'border-success/40 bg-success/5'
-                : 'border-border bg-card hover:border-primary/50'
-            "
-            @click.stop="requestCaptcha"
-          >
-            <span
-              class="grid size-5 shrink-0 place-items-center rounded border transition-colors"
-              :class="
-                captchaVerified
-                  ? 'border-success bg-success text-white'
-                  : 'border-input bg-card'
-              "
-            >
-              <Check v-if="captchaVerified" class="size-3.5" />
-              <LoaderCircle v-else-if="captchaLoading" class="size-3.5 animate-spin text-muted-foreground" />
-            </span>
-            <span class="text-sm font-medium text-foreground">人机验证</span>
-            <span v-if="captchaVerified" class="ml-auto text-xs text-success">已通过</span>
-            <span v-else class="ml-auto text-xs text-muted-foreground">
-              {{ captchaLoading ? '验证中…' : '点击验证' }}
-            </span>
-          </button>
-          <p v-if="captchaError" class="mt-2 text-xs text-destructive">{{ captchaError }}</p>
-          <p v-else-if="!captchaAppId" class="mt-2 text-xs text-destructive">
-            未配置 VITE_CAPTCHA_APP_ID，无法提交预约。
-          </p>
         </div>
 
         <div class="space-y-2 sm:col-span-2">
