@@ -99,6 +99,9 @@ export interface Reservation {
   applicantName?: string
   majorClass?: string
   qq?: string
+  reviewerName?: string
+  reviewerEmail?: string
+  reviewedAt?: string
   email?: string
   note: string
   status: ReservationStatus

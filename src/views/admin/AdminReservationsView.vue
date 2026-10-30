@@ -442,6 +442,14 @@ function refreshDetail() {
               拒绝原因：{{ detail.rejectionReason }}
             </p>
           </div>
+          <div v-if="detail.reviewerName" class="rounded-lg border border-border p-3 sm:col-span-2">
+            <p class="text-xs text-muted-foreground">处理人</p>
+            <p class="mt-1 text-sm font-medium text-foreground">
+              {{ detail.reviewerName }}
+              <span v-if="detail.reviewerEmail" class="font-normal text-muted-foreground">· {{ detail.reviewerEmail }}</span>
+            </p>
+            <p v-if="detail.reviewedAt" class="mt-1 text-xs text-muted-foreground">处理时间：{{ formatDateTime(detail.reviewedAt) }}</p>
+          </div>
         </div>
 
         <div class="rounded-lg border border-border">
