@@ -270,7 +270,7 @@ function refreshDetail() {
           <Label for="filter-search" >搜索</Label>
           <div class="relative">
             <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input id="filter-search" v-model="filters.q" class="pl-9" placeholder="姓名、学号、昵称或邮箱" />
+            <Input id="filter-search" v-model="filters.q" class="pl-9" placeholder="姓名、学号、QQ、昵称或邮箱" />
           </div>
         </div>
         <div class="col-span-2 flex items-end gap-2 md:col-span-1">
@@ -424,6 +424,7 @@ function refreshDetail() {
             <p class="text-xs text-muted-foreground">学号 / 专业班级</p>
             <p class="mt-1 font-mono text-sm text-foreground">{{ detail.studentId || '—' }}</p>
             <p class="mt-0.5 break-all text-xs text-muted-foreground">{{ detail.majorClass || '—' }}</p>
+            <p class="mt-1 text-xs text-muted-foreground">QQ：{{ detail.qq || '—' }}</p>
           </div>
           <div class="rounded-lg border border-border p-3">
             <p class="text-xs text-muted-foreground">时段</p>

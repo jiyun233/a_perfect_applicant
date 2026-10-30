@@ -98,6 +98,7 @@ export interface Reservation {
   studentId?: string
   applicantName?: string
   majorClass?: string
+  qq?: string
   email?: string
   note: string
   status: ReservationStatus
@@ -118,6 +119,7 @@ export interface CreateReservationInput {
   applicantName: string
   majorClass: string
   nickname: string
+  qq: string
   captchaTicket: string
   captchaRandstr: string
   email: string

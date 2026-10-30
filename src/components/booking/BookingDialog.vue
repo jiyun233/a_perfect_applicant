@@ -53,6 +53,7 @@ const form = reactive({
   applicantName: '',
   majorClass: '',
   nickname: '',
+  qq: '',
   email: '',
   note: '',
 })
@@ -197,6 +198,7 @@ const mutation = useMutation({
       applicantName: form.applicantName.trim(),
       majorClass: form.majorClass.trim(),
       nickname: form.nickname.trim(),
+      qq: form.qq.trim(),
       captchaTicket: captchaTicket.value,
       captchaRandstr: captchaRandstr.value,
       email: form.email.trim(),
@@ -307,6 +309,7 @@ const fieldLabels: Record<string, string> = {
   applicantName: '姓名',
   majorClass: '专业班级',
   nickname: '昵称',
+  qq: 'QQ 号',
   email: '邮箱',
   note: '备注',
 }
@@ -427,6 +430,7 @@ function validate() {
   if (form.majorClass.trim().length > 60) next.majorClass = '专业班级不能超过 60 个字符'
   if (form.nickname.trim().length < 1) next.nickname = '请填写昵称'
   if (form.nickname.trim().length > 20) next.nickname = '昵称不能超过 20 个字符'
+  if (!/^[1-9][0-9]{4,11}$/.test(form.qq.trim())) next.qq = '请填写 5–12 位 QQ 号'
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) next.email = '请填写有效邮箱'
   if (!Number.isInteger(Number(form.partySize)) || Number(form.partySize) < 1) {
     next.partySize = '人数至少为 1'
@@ -622,6 +626,19 @@ function close() {
           <Label for="booking-nickname">昵称</Label>
           <Input id="booking-nickname" v-model="form.nickname" maxlength="20" placeholder="展示在预约信息中" autocomplete="nickname" />
           <p v-if="errors.nickname" class="text-xs text-destructive">{{ errors.nickname }}</p>
+        </div>
+
+        <div class="space-y-2">
+          <Label for="booking-qq">QQ 号</Label>
+          <Input
+            id="booking-qq"
+            v-model="form.qq"
+            inputmode="numeric"
+            maxlength="12"
+            placeholder="5–12 位数字"
+            autocomplete="off"
+          />
+          <p v-if="errors.qq" class="text-xs text-destructive">{{ errors.qq }}</p>
         </div>
 
         <div class="space-y-2">
