@@ -18,7 +18,7 @@ function isActive(to: string) {
 <template>
   <div class="flex min-h-dvh flex-col bg-background">
     <header class="safe-top sticky top-0 z-40 border-b border-border bg-background">
-      <div class="mx-auto flex h-14 w-full max-w-6xl items-center gap-3 px-4 sm:h-16 sm:px-6">
+      <div class="page-gutter mx-auto flex min-h-14 w-full max-w-6xl items-center gap-3 sm:min-h-16">
         <RouterLink to="/booking" class="flex min-w-0 items-center gap-2.5">
           <span class="grid size-9 shrink-0 place-items-center rounded-lg border border-border bg-card text-primary">
             <Gamepad2 class="size-[18px]" />
@@ -60,7 +60,7 @@ function isActive(to: string) {
       </div>
     </header>
 
-    <main class="mobile-page-bottom mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:px-6 sm:py-8 lg:pb-10">
+    <main class="page-gutter mobile-page-bottom mx-auto w-full min-w-0 max-w-6xl flex-1 py-5 sm:py-8 sm:pb-10">
       <RouterView v-slot="{ Component }">
         <Transition name="page" mode="out-in">
           <component :is="Component" :key="route.path" />
@@ -69,7 +69,7 @@ function isActive(to: string) {
     </main>
 
     <footer class="border-t border-border">
-      <div class="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-5 pb-[calc(4.5rem+env(safe-area-inset-bottom))] text-[11px] leading-relaxed text-muted-foreground sm:flex-row sm:items-end sm:justify-between sm:px-6 sm:pb-5">
+      <div class="page-gutter mx-auto flex w-full max-w-6xl flex-col gap-2 py-5 pb-[calc(4.5rem+env(safe-area-inset-bottom))] text-[11px] leading-relaxed text-muted-foreground sm:flex-row sm:items-end sm:justify-between sm:pb-5">
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
           <a
             href="https://beian.miit.gov.cn/"
@@ -91,7 +91,7 @@ function isActive(to: string) {
       class="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background safe-bottom sm:hidden"
       aria-label="移动端主导航"
     >
-      <div class="grid grid-cols-2">
+      <div class="page-gutter grid grid-cols-2">
         <RouterLink
           v-for="item in navItems"
           :key="item.to"

@@ -137,14 +137,15 @@ function confirmCancel() {
               placeholder="2x40xxxxxx"
               inputmode="numeric"
               maxlength="10"
-              class="pr-9 font-mono tracking-wide"
+              class="pr-12 font-mono tracking-wide"
               aria-label="学号"
               autocomplete="off"
+              enterkeyhint="search"
             />
             <button
               v-if="inputStudentId"
               type="button"
-              class="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+              class="absolute right-0 top-1/2 grid size-11 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground sm:size-10"
               aria-label="清空学号"
               @click="inputStudentId = ''"
             >
@@ -188,7 +189,7 @@ function confirmCancel() {
               v-if="item.canCancel"
               variant="ghost"
               size="sm"
-              class="h-8 px-2 text-destructive"
+              class="px-2 text-destructive"
               @click="askCancel(item)"
             >
               取消
@@ -229,7 +230,7 @@ function confirmCancel() {
       <button
         v-if="hasSearched"
         type="button"
-        class="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+        class="min-h-11 text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
         @click="clearSearch"
       >
         查询其他学号

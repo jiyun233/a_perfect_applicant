@@ -91,7 +91,7 @@ function statusVariant(status: Reservation['status']) {
         <p class="leading-relaxed">当前邮件驱动为 log，审批结果只写入服务端日志。部署前请配置 SMTP。</p>
       </div>
 
-      <div class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div class="grid items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Card>
           <div class="flex items-center justify-between border-b border-border px-4 py-3.5">
             <div class="flex items-center gap-2">

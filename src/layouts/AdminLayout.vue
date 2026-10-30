@@ -95,7 +95,7 @@ function logout() {
 
     <div class="lg:pl-60">
       <header class="safe-top sticky top-0 z-30 border-b border-border bg-background">
-        <div class="flex h-14 items-center gap-3 px-4 sm:h-16 sm:px-6">
+        <div class="page-gutter flex min-h-14 items-center gap-3 sm:min-h-16">
           <RouterLink to="/admin/dashboard" class="flex items-center gap-2 lg:hidden">
             <span class="grid size-8 place-items-center rounded-lg border border-border bg-card text-primary">
               <Gamepad2 class="size-4" />
@@ -123,7 +123,7 @@ function logout() {
         </div>
       </header>
 
-      <main class="mobile-page-bottom mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-8 lg:pb-10">
+      <main class="page-gutter mobile-page-bottom mx-auto w-full min-w-0 max-w-6xl py-5 sm:py-8 lg:pb-10">
         <RouterView v-slot="{ Component }">
           <Transition name="page" mode="out-in">
             <component :is="Component" :key="route.path" />
@@ -136,7 +136,7 @@ function logout() {
       class="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background safe-bottom lg:hidden"
       aria-label="移动端管理导航"
     >
-      <div class="grid grid-cols-3">
+      <div class="page-gutter grid grid-cols-3">
         <RouterLink
           v-for="item in navItems"
           :key="item.to"

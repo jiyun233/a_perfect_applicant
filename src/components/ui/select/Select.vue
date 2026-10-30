@@ -71,12 +71,12 @@ function onValueChange(value: unknown) {
       :aria-label="props.ariaLabel"
       :class="
         cn(
-          'flex h-11 w-full items-center justify-between gap-2 rounded-lg border border-input bg-card px-3 text-left text-base text-foreground transition-colors hover:border-primary/50 focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:text-sm',
+          'flex h-11 w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-input bg-card px-3 text-left text-base text-foreground transition-colors hover:border-primary/50 focus:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:text-sm',
           props.class,
         )
       "
     >
-      <SelectValue :placeholder="props.placeholder" class="truncate" />
+      <SelectValue :placeholder="props.placeholder" class="min-w-0 truncate" />
       <SelectIcon class="shrink-0 text-muted-foreground">
         <ChevronDown class="size-4" />
       </SelectIcon>
@@ -86,15 +86,16 @@ function onValueChange(value: unknown) {
       <SelectContent
         position="popper"
         :side-offset="4"
-        class="z-[100] max-h-72 min-w-[var(--reka-select-trigger-width)] overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg"
+        :collision-padding="12"
+        class="z-[100] max-h-[min(18rem,var(--reka-select-content-available-height))] w-[var(--reka-select-trigger-width)] max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg"
       >
-        <SelectViewport class="p-1">
+        <SelectViewport class="overscroll-contain p-1">
           <SelectItem
             v-for="option in props.options"
             :key="option.value"
             :value="optionValue(option.value)"
             :disabled="option.disabled"
-            class="relative flex cursor-pointer select-none items-center rounded-md py-2 pl-2.5 pr-8 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-muted data-[state=checked]:text-foreground"
+            class="relative flex min-h-11 cursor-pointer select-none items-center rounded-md py-2 pl-2.5 pr-8 text-sm break-words outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-muted data-[state=checked]:text-foreground sm:min-h-9"
           >
             <SelectItemText>{{ option.label }}</SelectItemText>
             <SelectItemIndicator class="absolute right-2">

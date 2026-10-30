@@ -10,7 +10,8 @@
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
-    "type-check": "vue-tsc --noEmit"
+    "type-check": "vue-tsc --noEmit",
+    "test:responsive": "node scripts/responsive-captcha.mjs"
   },
   "dependencies": {
     "@tanstack/vue-query": "^5.87.1",

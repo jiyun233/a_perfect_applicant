@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { marked } from 'marked'
 import {
@@ -22,6 +22,7 @@ import { api, ApiError, errorMessage } from '@/lib/api/client'
 import type { Schedule, ScheduleCell } from '@/lib/api/types'
 import { formatDateLong } from '@/lib/date'
 import bookingRules from '@/content/booking-rules.md?raw'
+import TencentCaptchaChallenge from './TencentCaptchaChallenge.vue'
 
 const props = defineProps<{
   open: boolean
@@ -77,41 +78,6 @@ const isMobile = ref(
 let rulesTimer: number | undefined
 let mobileQuery: MediaQueryList | undefined
 
-let captchaScriptPromise: Promise<void> | null = null
-
-type TencentCaptchaResult = {
-  ret: number
-  ticket?: string | null
-  randstr?: string | null
-  errorCode?: number
-  errorMessage?: string
-}
-
-type TencentCaptchaCtor = new (
-  appId: string,
-  callback: (result: TencentCaptchaResult) => void,
-  options?: Record<string, unknown>,
-) => { show: () => void; destroy: () => void }
-
-function loadCaptchaScript(): Promise<void> {
-  const existing = (window as unknown as { TencentCaptcha?: TencentCaptchaCtor }).TencentCaptcha
-  if (existing) return Promise.resolve()
-  if (captchaScriptPromise) return captchaScriptPromise
-
-  captchaScriptPromise = new Promise((resolve, reject) => {
-    const script = document.createElement('script')
-    script.src = 'https://turing.captcha.qcloud.com/TCaptcha.js'
-    script.async = true
-    script.onload = () => resolve()
-    script.onerror = () => {
-      captchaScriptPromise = null
-      reject(new Error('captcha script failed to load'))
-    }
-    document.head.appendChild(script)
-  })
-  return captchaScriptPromise
-}
-
 function resetCaptcha() {
   captchaVerified.value = false
   captchaTicket.value = ''
@@ -140,7 +106,7 @@ function onRulesAccepted() {
   stopRulesTimer()
   rulesAccepted.value = true
   step.value = 'form'
-  window.setTimeout(() => openCaptcha(), 100)
+  openCaptcha()
 }
 
 function syncMobile(event: MediaQueryList | MediaQueryListEvent) {
@@ -158,8 +124,9 @@ onBeforeUnmount(() => {
   mobileQuery?.removeEventListener('change', syncMobile)
 })
 
-function scrollDialogToTop() {
-  document.querySelector<HTMLElement>('.dialog-content')?.scrollTo({ top: 0, behavior: 'smooth' })
+async function scrollDialogToTop() {
+  await nextTick()
+  document.querySelector<HTMLElement>('.booking-dialog .dialog-scroll')?.scrollTo({ top: 0 })
 }
 
 function goNextStep() {
@@ -190,6 +157,7 @@ function validateTimeOnly() {
 }
 
 function openCaptcha() {
+  if (!props.open || captchaLoading.value || isSubmitting.value) return
   if (!captchaEnabled) {
     mutation.mutate()
     return
@@ -199,30 +167,19 @@ function openCaptcha() {
     return
   }
   captchaLoading.value = true
-  void loadCaptchaScript()
-    .then(() => {
-      const Ctor = (window as unknown as { TencentCaptcha?: TencentCaptchaCtor }).TencentCaptcha
-      if (!Ctor) throw new Error('TencentCaptcha is unavailable')
-      const instance = new Ctor(captchaAppId, (result) => {
-        captchaLoading.value = false
-        if (result.ret === 0 && result.ticket && result.randstr && !result.errorCode) {
-          captchaVerified.value = true
-          captchaTicket.value = result.ticket
-          captchaRandstr.value = result.randstr
-          toast.success('人机验证通过')
-          if (validate()) mutation.mutate()
-          return
-        }
-        if (result.ret !== 2) {
-          toast.error('人机验证未通过', { description: result.errorMessage || '请重试。' })
-        }
-      }, { userLanguage: 'zh-cn' })
-      instance.show()
-    })
-    .catch(() => {
-      captchaLoading.value = false
-      toast.error('验证码加载失败', { description: '请检查网络后重试。' })
-    })
+}
+
+function onCaptchaVerified(credentials: { ticket: string; randstr: string }) {
+  captchaLoading.value = false
+  captchaVerified.value = true
+  captchaTicket.value = credentials.ticket
+  captchaRandstr.value = credentials.randstr
+  if (validate()) mutation.mutate()
+}
+
+function onCaptchaError(message: string) {
+  resetCaptcha()
+  toast.error('人机验证未完成', { description: message })
 }
 const mutation = useMutation({
   mutationFn: () =>
@@ -454,12 +411,14 @@ function validate() {
 }
 
 function submit() {
+  if (!canSubmit.value) return
   serverFields.value = {}
   if (!validate()) return
   if (captchaEnabled && !captchaVerified.value) {
     if (!rulesAccepted.value) {
       step.value = 'rules'
       startRulesTimer()
+      scrollDialogToTop()
       return
     }
     openCaptcha()
@@ -469,7 +428,7 @@ function submit() {
 }
 
 function close() {
-  if (isSubmitting.value) return
+  if (isSubmitting.value || captchaLoading.value) return
   stopRulesTimer()
   emit('update:open', false)
 }
@@ -477,6 +436,7 @@ function close() {
 
 <template>
   <Dialog
+    v-if="!captchaLoading"
     :open="props.open"
     :title="succeeded ? '预约成功' : step === 'rules' ? '预约前请阅读' : '预约机台'"
     :description="
@@ -488,7 +448,7 @@ function close() {
     "
     :persistent="isSubmitting || captchaLoading"
     fullscreen
-    class="max-w-2xl"
+    class="booking-dialog max-w-2xl"
     @update:open="emit('update:open', $event)"
   >
     <template v-if="!succeeded && step === 'form'">
@@ -554,6 +514,7 @@ function close() {
               id="booking-party"
               v-model.number="form.partySize"
               type="number"
+              inputmode="numeric"
               min="1"
               :max="maxPartySize"
               class="number-tabular"
@@ -575,7 +536,7 @@ function close() {
         </div>
       </div>
 
-      <div v-show="!isMobile || mobileStep === 2" class="grid gap-4 sm:grid-cols-2">
+      <div v-show="!isMobile || mobileStep === 2" class="grid gap-4 sm:mt-4 sm:grid-cols-2">
         <div class="space-y-2">
           <Label for="booking-student-id">学号</Label>
           <Input
@@ -593,7 +554,7 @@ function close() {
 
         <div class="space-y-2">
           <Label for="booking-name">姓名</Label>
-          <Input id="booking-name" v-model="form.applicantName" maxlength="40" placeholder="真实姓名" />
+          <Input id="booking-name" v-model="form.applicantName" maxlength="40" placeholder="真实姓名" autocomplete="name" />
           <p v-if="errors.applicantName" class="text-xs text-destructive">{{ errors.applicantName }}</p>
         </div>
 
@@ -605,13 +566,13 @@ function close() {
 
         <div class="space-y-2">
           <Label for="booking-nickname">昵称</Label>
-          <Input id="booking-nickname" v-model="form.nickname" maxlength="20" placeholder="展示在预约信息中" />
+          <Input id="booking-nickname" v-model="form.nickname" maxlength="20" placeholder="展示在预约信息中" autocomplete="nickname" />
           <p v-if="errors.nickname" class="text-xs text-destructive">{{ errors.nickname }}</p>
         </div>
 
         <div class="space-y-2">
           <Label for="booking-email">邮箱</Label>
-          <Input id="booking-email" v-model="form.email" type="email" maxlength="254" placeholder="用于接收审批结果" />
+          <Input id="booking-email" v-model="form.email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" :spellcheck="false" maxlength="254" placeholder="用于接收审批结果" />
           <p v-if="errors.email" class="text-xs text-destructive">{{ errors.email }}</p>
         </div>
 
@@ -670,11 +631,11 @@ function close() {
         >
           取消
         </Button>
-        <Button v-if="isMobile && mobileStep === 1" class="w-full sm:w-auto" @click="goNextStep">
+        <Button v-if="isMobile && mobileStep === 1" class="w-full sm:w-auto" :disabled="!canSubmit" @click="goNextStep">
           下一步
         </Button>
         <template v-else>
-          <Button v-if="isMobile" variant="ghost" class="w-full sm:w-auto" @click="goPreviousStep">
+          <Button v-if="isMobile" variant="ghost" class="w-full sm:w-auto" :disabled="isSubmitting" @click="goPreviousStep">
             上一步
           </Button>
           <Button class="w-full sm:w-auto" :disabled="!canSubmit" @click="submit">
@@ -694,13 +655,19 @@ function close() {
       <Button v-else class="w-full sm:w-auto" @click="close">完成</Button>
     </template>
   </Dialog>
+  <TencentCaptchaChallenge
+    v-if="props.open && captchaLoading"
+    :app-id="captchaAppId"
+    @verified="onCaptchaVerified"
+    @cancel="resetCaptcha"
+    @error="onCaptchaError"
+  />
 </template>
 
 
 <style scoped>
 .rules-markdown {
-  max-height: min(52dvh, 26rem);
-  overflow-y: auto;
+  overflow-wrap: anywhere;
   padding-right: 0.25rem;
   color: var(--color-muted-foreground);
   font-size: 0.875rem;

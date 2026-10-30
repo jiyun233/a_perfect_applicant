@@ -133,12 +133,13 @@ function refresh() {
     </div>
 
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div class="flex gap-1 overflow-x-auto rounded-lg border border-border bg-card p-1">
+      <div class="grid grid-cols-4 gap-1 rounded-lg border border-border bg-card p-1 sm:flex">
         <button
           v-for="filter in filters"
           :key="filter.value"
           type="button"
-          class="h-8 shrink-0 rounded-md px-3 text-xs font-medium transition-colors"
+          :aria-pressed="stateFilter === filter.value"
+          class="min-h-11 rounded-md px-2 text-sm font-medium transition-colors sm:min-h-9 sm:px-3 sm:text-xs"
           :class="
             stateFilter === filter.value
               ? 'bg-muted text-foreground'
@@ -188,7 +189,7 @@ function refresh() {
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-1.5">
-              <h2 class="truncate text-base font-semibold text-foreground">{{ machine.name }}</h2>
+              <h2 class="text-base font-semibold text-foreground">{{ machine.name }}</h2>
               <Badge :variant="stateTone(machine)">{{ stateLabel(machine) }}</Badge>
             </div>
             <p class="mt-0.5 truncate text-xs text-muted-foreground">{{ machine.game }}</p>
@@ -201,7 +202,7 @@ function refresh() {
         <dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
           <div>
             <dt class="text-xs text-muted-foreground">版本</dt>
-            <dd class="mt-0.5 truncate font-medium text-foreground">{{ machine.softwareVersion || '未设置' }}</dd>
+            <dd class="mt-0.5 font-medium text-foreground">{{ machine.softwareVersion || '未设置' }}</dd>
           </div>
           <div>
             <dt class="text-xs text-muted-foreground">人数</dt>
@@ -212,7 +213,7 @@ function refresh() {
           </div>
           <div class="col-span-2">
             <dt class="text-xs text-muted-foreground">位置</dt>
-            <dd class="mt-0.5 flex items-center gap-1 truncate text-foreground">
+            <dd class="mt-0.5 flex items-start gap-1 text-foreground">
               <MapPin class="size-3.5 shrink-0 text-muted-foreground" />
               {{ machine.location || '未设置' }}
             </dd>
@@ -225,7 +226,7 @@ function refresh() {
               <Music2 class="size-3.5" />
               正在游玩
             </p>
-            <p class="mt-0.5 truncate text-sm text-foreground">
+            <p class="mt-0.5 text-sm text-foreground">
               {{ machine.status.currentSong || '未填写曲目' }}
               <span v-if="machine.status.currentChart" class="text-muted-foreground">· {{ machine.status.currentChart }}</span>
             </p>
@@ -254,7 +255,7 @@ function refresh() {
           <RouterLink
             v-if="machine.active && machine.status.state !== 'offline'"
             to="/booking"
-            class="font-medium text-primary"
+            class="inline-flex min-h-11 items-center px-2 font-medium text-primary"
           >
             去预约
           </RouterLink>

@@ -11,6 +11,7 @@ import {
   LoaderCircle,
   Mail,
   RefreshCw,
+  Search,
   ShieldCheck,
   Users,
   Wifi,
@@ -173,7 +174,7 @@ function machineTone(machine: Machine) {
           按机台查看已有预约信息，未产生预约的时段不会显示。需要预约请点击「新建预约」。
         </p>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-2 sm:flex">
         <Button
           variant="outline"
           size="sm"
@@ -184,7 +185,7 @@ function machineTone(machine: Machine) {
           <RefreshCw :class="cn('size-4', isRefreshing && 'animate-spin')" />
           刷新
         </Button>
-        <Button size="sm" @click="openNewBooking">
+        <Button size="sm" :disabled="!schedule || isRefreshing" @click="openNewBooking">
           <CalendarDays class="size-4" />
           新建预约
         </Button>
@@ -195,7 +196,8 @@ function machineTone(machine: Machine) {
       <button
         type="button"
         data-testid="tab-schedule"
-        class="flex h-10 items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors"
+        :aria-pressed="mobileSection === 'schedule'"
+        class="flex min-h-11 items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors"
         :class="mobileSection === 'schedule' ? 'bg-muted text-foreground' : 'text-muted-foreground'"
         @click="mobileSection = 'schedule'"
       >
@@ -205,7 +207,8 @@ function machineTone(machine: Machine) {
       <button
         type="button"
         data-testid="tab-query"
-        class="flex h-10 items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors"
+        :aria-pressed="mobileSection === 'query'"
+        class="flex min-h-11 items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors"
         :class="mobileSection === 'query' ? 'bg-muted text-foreground' : 'text-muted-foreground'"
         @click="mobileSection = 'query'"
       >
@@ -249,14 +252,14 @@ function machineTone(machine: Machine) {
       </div>
 
       <Card class="p-2">
-        <div ref="dateStripRef" class="flex snap-x gap-1 overflow-x-auto">
+        <div ref="dateStripRef" class="flex snap-x snap-proximity gap-1 overflow-x-auto overscroll-x-contain" aria-label="预约日期">
           <button
             v-for="day in days"
             :key="day"
             type="button"
             data-testid="date-chip"
             :aria-pressed="day === selectedDate"
-            class="relative flex min-w-[60px] shrink-0 flex-col items-center gap-0.5 rounded-lg px-2 py-2.5 transition-colors"
+            class="relative flex min-w-15 flex-1 snap-center flex-col items-center gap-0.5 rounded-lg px-2 py-2.5 transition-colors"
             :class="
               day === selectedDate
                 ? 'bg-primary text-primary-foreground'
@@ -290,7 +293,7 @@ function machineTone(machine: Machine) {
       </div>
     </div>
 
-    <div v-if="schedule" class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+    <div v-if="schedule" class="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
       <div :class="mobileSection === 'schedule' ? 'min-w-0 space-y-3' : 'hidden min-w-0 space-y-3 xl:block'">
         <Card v-if="schedule.machines.length === 0" class="px-4 py-14 text-center">
           <Gamepad2 class="mx-auto size-6 text-muted-foreground" />
@@ -344,7 +347,7 @@ function machineTone(machine: Machine) {
                     :key="`${machine.id}-${entry.startTime}-${entry.endTime}-${index}`"
                     class="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3"
                   >
-                    <span class="flex w-28 shrink-0 items-center gap-1.5 text-sm font-medium text-foreground number-tabular">
+                    <span class="flex shrink-0 items-center gap-1.5 text-sm font-medium text-foreground number-tabular">
                       <Clock3 class="size-3.5 text-muted-foreground" />
                       {{ entry.startTime }}–{{ entry.endTime }}
                     </span>

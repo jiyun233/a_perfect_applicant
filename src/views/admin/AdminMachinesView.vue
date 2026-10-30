@@ -119,7 +119,7 @@ function stateTone(machine: Machine) {
 
     <Card class="overflow-hidden">
       <div class="flex flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div class="flex gap-1 rounded-lg border border-border bg-background p-1">
+        <div class="grid grid-cols-3 gap-1 rounded-lg border border-border bg-background p-1 sm:flex">
           <button
             v-for="option in [
               { value: 'all', label: '全部' },
@@ -128,7 +128,8 @@ function stateTone(machine: Machine) {
             ]"
             :key="option.value"
             type="button"
-            class="h-8 rounded-md px-2.5 text-xs font-medium transition-colors"
+            :aria-pressed="filter === option.value"
+            class="min-h-11 rounded-md px-2.5 text-sm font-medium transition-colors sm:min-h-9 sm:text-xs"
             :class="filter === option.value ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'"
             @click="filter = option.value as 'all' | 'active' | 'inactive'"
           >

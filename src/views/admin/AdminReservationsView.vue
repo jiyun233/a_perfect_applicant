@@ -253,10 +253,10 @@ function refreshDetail() {
     </section>
 
     <Card class="p-3">
-      <form class="grid grid-cols-2 gap-2 sm:grid-cols-[140px_140px_160px_minmax(0,1fr)_120px]" @submit.prevent="applyFilters">
+      <form class="grid grid-cols-2 items-end gap-3 md:grid-cols-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_auto]" @submit.prevent="applyFilters">
         <div class="space-y-1.5">
           <Label for="filter-date" class="text-xs text-muted-foreground">日期</Label>
-          <Input id="filter-date" v-model="filters.date" type="date" class="h-10 text-sm" />
+          <Input id="filter-date" v-model="filters.date" type="date" />
         </div>
         <div class="space-y-1.5">
           <Label for="filter-status" class="text-xs text-muted-foreground">状态</Label>
@@ -266,15 +266,15 @@ function refreshDetail() {
           <Label for="filter-machine" class="text-xs text-muted-foreground">机台</Label>
           <Select id="filter-machine" v-model="filters.machineId" :options="machineOptions" />
         </div>
-        <div class="col-span-2 space-y-1.5 sm:col-span-1">
+        <div class="col-span-2 space-y-1.5 xl:col-span-1">
           <Label for="filter-search" class="text-xs text-muted-foreground">搜索</Label>
           <div class="relative">
             <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input id="filter-search" v-model="filters.q" class="pl-9" placeholder="姓名、学号、昵称或邮箱" />
           </div>
         </div>
-        <div class="col-span-2 flex items-end gap-2 sm:col-span-1">
-          <Button type="submit" size="sm" class="w-full whitespace-nowrap">筛选</Button>
+        <div class="col-span-2 flex items-end gap-2 md:col-span-1">
+          <Button type="submit" size="sm" class="flex-1">筛选</Button>
           <Button type="button" variant="outline" size="icon" aria-label="重置筛选" @click="resetFilters">
             <RotateCcw class="size-4" />
           </Button>
