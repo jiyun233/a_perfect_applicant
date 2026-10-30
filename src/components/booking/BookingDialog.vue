@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
+import { marked } from 'marked'
 import {
   CalendarDays,
   CheckCircle2,
@@ -16,7 +17,6 @@ import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
-import RulesDialog from '@/components/booking/RulesDialog.vue'
 import { Textarea } from '@/components/ui/textarea'
 import { api, ApiError, errorMessage } from '@/lib/api/client'
 import type { Schedule, ScheduleCell } from '@/lib/api/types'
@@ -66,8 +66,16 @@ const captchaVerified = ref(false)
 const captchaLoading = ref(false)
 const captchaTicket = ref('')
 const captchaRandstr = ref('')
-const rulesOpen = ref(false)
 const rulesAccepted = ref(false)
+const step = ref<'form' | 'rules'>('form')
+const rulesRemaining = ref(5)
+const rulesHtml = computed(() => marked.parse(bookingRules, { async: false }) as string)
+const mobileStep = ref<1 | 2>(1)
+const isMobile = ref(
+  typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches,
+)
+let rulesTimer: number | undefined
+let mobileQuery: MediaQueryList | undefined
 
 let captchaScriptPromise: Promise<void> | null = null
 
@@ -111,9 +119,74 @@ function resetCaptcha() {
   captchaLoading.value = false
 }
 
+function stopRulesTimer() {
+  if (rulesTimer !== undefined) {
+    window.clearInterval(rulesTimer)
+    rulesTimer = undefined
+  }
+}
+
+function startRulesTimer() {
+  stopRulesTimer()
+  rulesRemaining.value = 5
+  rulesTimer = window.setInterval(() => {
+    if (rulesRemaining.value > 0) rulesRemaining.value -= 1
+    if (rulesRemaining.value <= 0) stopRulesTimer()
+  }, 1000)
+}
+
 function onRulesAccepted() {
+  if (rulesRemaining.value > 0) return
+  stopRulesTimer()
   rulesAccepted.value = true
-  window.setTimeout(() => openCaptcha(), 120)
+  step.value = 'form'
+  window.setTimeout(() => openCaptcha(), 100)
+}
+
+function syncMobile(event: MediaQueryList | MediaQueryListEvent) {
+  isMobile.value = event.matches
+}
+
+onMounted(() => {
+  mobileQuery = window.matchMedia('(max-width: 639px)')
+  isMobile.value = mobileQuery.matches
+  mobileQuery.addEventListener('change', syncMobile)
+})
+
+onBeforeUnmount(() => {
+  stopRulesTimer()
+  mobileQuery?.removeEventListener('change', syncMobile)
+})
+
+function scrollDialogToTop() {
+  document.querySelector<HTMLElement>('.dialog-content')?.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+function goNextStep() {
+  if (validateTimeOnly()) {
+    mobileStep.value = 2
+    scrollDialogToTop()
+  }
+}
+
+function goPreviousStep() {
+  mobileStep.value = 1
+  scrollDialogToTop()
+}
+
+function validateTimeOnly() {
+  const next: Record<string, string> = {}
+  if (!form.machineId) next.machineId = '请选择机台'
+  if (!form.startTime || !form.endTime) next.time = '请选择时段'
+  if (form.endTime <= form.startTime) next.time = '结束时间必须晚于开始时间'
+  if (!Number.isInteger(Number(form.partySize)) || Number(form.partySize) < 1) {
+    next.partySize = '人数至少为 1'
+  }
+  if (Number(form.partySize) > maxPartySize.value) {
+    next.partySize = `当前时段最多可约 ${maxPartySize.value} 人`
+  }
+  localErrors.value = next
+  return Object.keys(next).length === 0
 }
 
 function openCaptcha() {
@@ -278,11 +351,14 @@ watch(
   (open) => {
     if (!open) {
       captchaLoading.value = false
-      rulesOpen.value = false
+      stopRulesTimer()
       return
     }
     succeeded.value = false
-    rulesOpen.value = false
+    step.value = 'form'
+    mobileStep.value = 1
+    stopRulesTimer()
+    rulesRemaining.value = 5
     rulesAccepted.value = false
     localErrors.value = {}
     serverFields.value = {}
@@ -382,7 +458,8 @@ function submit() {
   if (!validate()) return
   if (captchaEnabled && !captchaVerified.value) {
     if (!rulesAccepted.value) {
-      rulesOpen.value = true
+      step.value = 'rules'
+      startRulesTimer()
       return
     }
     openCaptcha()
@@ -393,6 +470,7 @@ function submit() {
 
 function close() {
   if (isSubmitting.value) return
+  stopRulesTimer()
   emit('update:open', false)
 }
 </script>
@@ -400,17 +478,20 @@ function close() {
 <template>
   <Dialog
     :open="props.open"
-    :title="succeeded ? '预约成功' : '预约机台'"
+    :title="succeeded ? '预约成功' : step === 'rules' ? '预约前请阅读' : '预约机台'"
     :description="
       succeeded
         ? '审批结果会发送到你的邮箱，可使用学号查询预约状态。'
-        : '选择机台与连续时段，填写信息后提交审批。'
+        : step === 'rules'
+          ? '倒计时结束后才能继续人机验证。'
+          : '选择机台与连续时段，填写信息后提交审批。'
     "
-    :persistent="isSubmitting"
+    :persistent="isSubmitting || captchaLoading"
+    fullscreen
     class="max-w-2xl"
     @update:open="emit('update:open', $event)"
   >
-    <template v-if="!succeeded">
+    <template v-if="!succeeded && step === 'form'">
       <div class="mb-5 flex items-center gap-3 rounded-lg border border-border bg-muted/50 px-3 py-2.5">
         <CalendarDays class="size-4 shrink-0 text-primary" />
         <div class="min-w-0">
@@ -429,7 +510,23 @@ function close() {
         当前机台在该日期已没有可预约时段，请选择其他机台或日期。
       </div>
 
-      <div class="grid gap-4 sm:grid-cols-2">
+      <div v-if="isMobile" class="mb-4 flex items-center gap-2 text-xs">
+        <span
+          class="flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium"
+          :class="mobileStep === 1 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'"
+        >
+          1 预约时间
+        </span>
+        <span class="h-px flex-1 bg-border" />
+        <span
+          class="flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium"
+          :class="mobileStep === 2 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'"
+        >
+          2 预约人信息
+        </span>
+      </div>
+
+      <div v-show="!isMobile || mobileStep === 1" class="grid gap-4 sm:grid-cols-2">
         <div class="space-y-2 sm:col-span-2">
           <Label for="booking-date">日期</Label>
           <Select
@@ -476,7 +573,9 @@ function close() {
           <Select id="booking-end" v-model="form.endTime" :options="endTimeOptions" />
           <p v-if="errors.time" class="text-xs text-destructive">{{ errors.time }}</p>
         </div>
+      </div>
 
+      <div v-show="!isMobile || mobileStep === 2" class="grid gap-4 sm:grid-cols-2">
         <div class="space-y-2">
           <Label for="booking-student-id">学号</Label>
           <Input
@@ -544,6 +643,10 @@ function close() {
       </div>
     </template>
 
+    <template v-else-if="step === 'rules'">
+      <div class="rules-markdown" v-html="rulesHtml" />
+    </template>
+
     <template v-else>
       <div class="py-2 text-center">
         <CheckCircle2 class="mx-auto size-10 text-success" />
@@ -557,18 +660,124 @@ function close() {
     </template>
 
     <template #footer>
-      <template v-if="!succeeded">
-        <Button variant="ghost" class="w-full sm:w-auto" :disabled="isSubmitting" @click="close">
+      <template v-if="!succeeded && step === 'form'">
+        <Button
+          v-if="!isMobile || mobileStep === 1"
+          variant="ghost"
+          class="w-full sm:w-auto"
+          :disabled="isSubmitting"
+          @click="close"
+        >
           取消
         </Button>
-        <Button class="w-full sm:w-auto" :disabled="!canSubmit" @click="submit">
-          <LoaderCircle v-if="isSubmitting" class="animate-spin" />
-          提交审批
+        <Button v-if="isMobile && mobileStep === 1" class="w-full sm:w-auto" @click="goNextStep">
+          下一步
+        </Button>
+        <template v-else>
+          <Button v-if="isMobile" variant="ghost" class="w-full sm:w-auto" @click="goPreviousStep">
+            上一步
+          </Button>
+          <Button class="w-full sm:w-auto" :disabled="!canSubmit" @click="submit">
+            <LoaderCircle v-if="isSubmitting" class="animate-spin" />
+            提交审批
+          </Button>
+        </template>
+      </template>
+      <template v-else-if="step === 'rules'">
+        <Button variant="ghost" class="w-full sm:w-auto" @click="step = 'form'; stopRulesTimer()">
+          返回修改
+        </Button>
+        <Button class="w-full sm:w-auto" :disabled="rulesRemaining > 0" @click="onRulesAccepted">
+          {{ rulesRemaining > 0 ? `请阅读规则（${rulesRemaining}s）` : '我已阅读，继续验证' }}
         </Button>
       </template>
       <Button v-else class="w-full sm:w-auto" @click="close">完成</Button>
     </template>
   </Dialog>
-
-  <RulesDialog v-model:open="rulesOpen" :markdown="bookingRules" @accept="onRulesAccepted" />
 </template>
+
+
+<style scoped>
+.rules-markdown {
+  max-height: min(52dvh, 26rem);
+  overflow-y: auto;
+  padding-right: 0.25rem;
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.8;
+}
+
+.rules-markdown :deep(h1) {
+  margin: 0 0 0.75rem;
+  color: var(--color-foreground);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.rules-markdown :deep(h2) {
+  margin: 1.25rem 0 0.5rem;
+  color: var(--color-foreground);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.rules-markdown :deep(h3) {
+  margin: 1rem 0 0.375rem;
+  color: var(--color-foreground);
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.rules-markdown :deep(p) {
+  margin: 0.5rem 0;
+}
+
+.rules-markdown :deep(ul),
+.rules-markdown :deep(ol) {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+.rules-markdown :deep(ul) {
+  list-style: disc;
+}
+
+.rules-markdown :deep(ol) {
+  list-style: decimal;
+}
+
+.rules-markdown :deep(li) {
+  margin: 0.25rem 0;
+}
+
+.rules-markdown :deep(a) {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.rules-markdown :deep(strong) {
+  color: var(--color-foreground);
+  font-weight: 600;
+}
+
+.rules-markdown :deep(blockquote) {
+  margin: 0.75rem 0;
+  border-left: 3px solid var(--color-border);
+  padding-left: 0.75rem;
+  color: var(--color-muted-foreground);
+}
+
+.rules-markdown :deep(code) {
+  border-radius: 0.25rem;
+  background: var(--color-muted);
+  padding: 0.125rem 0.3rem;
+  font-size: 0.8125rem;
+}
+
+.rules-markdown :deep(hr) {
+  margin: 1rem 0;
+  border-color: var(--color-border);
+}
+</style>

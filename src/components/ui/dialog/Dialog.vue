@@ -19,8 +19,9 @@ const props = withDefaults(
     description?: string
     class?: HTMLAttributes['class']
     persistent?: boolean
+    fullscreen?: boolean
   }>(),
-  { persistent: false },
+  { persistent: false, fullscreen: false },
 )
 const emit = defineEmits<{ 'update:open': [value: boolean] }>()
 
@@ -42,14 +43,16 @@ function blockDismiss(event: Event) {
         :class="
           cn(
             'dialog-content fixed left-1/2 top-1/2 z-50 max-h-[85dvh] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-border bg-card p-6 text-card-foreground shadow-xl focus:outline-none',
-            'max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:w-full max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[92dvh] max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))]',
+            props.fullscreen
+              ? 'max-sm:inset-0 max-sm:top-0 max-sm:bottom-0 max-sm:h-dvh max-sm:max-h-none max-sm:w-full max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-none max-sm:border-0 max-sm:p-4 max-sm:pt-[max(1rem,env(safe-area-inset-top))]'
+              : 'max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:w-full max-sm:max-w-none max-sm:translate-x-0 max-sm:translate-y-0 max-sm:rounded-b-none max-sm:rounded-t-2xl max-sm:max-h-[92dvh] max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))]',
             props.class,
           )
         "
         @pointer-down-outside="blockDismiss"
         @escape-key-down="blockDismiss"
       >
-        <div class="mx-auto mb-4 h-1 w-10 rounded-full bg-border sm:hidden" aria-hidden="true" />
+        <div v-if="!props.fullscreen" class="mx-auto mb-4 h-1 w-10 rounded-full bg-border sm:hidden" aria-hidden="true" />
         <div class="mb-5 pr-8">
           <DialogTitle class="text-lg font-semibold text-foreground">
             {{ props.title }}
