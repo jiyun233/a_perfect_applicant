@@ -23,6 +23,7 @@ Environment variables:
 
 ```env
 VITE_API_BASE_URL=https://api.example.com/api/v1
+VITE_CAPTCHA_MODE=1.0
 VITE_CAPTCHA_APP_ID=your-captcha-app-id
 ```
 

@@ -39,7 +39,11 @@ export function loadTencentCaptcha(): Promise<CaptchaConstructor> {
       }
     }
     const timeout = window.setTimeout(() => finish(new Error('验证码加载超时')), 20_000)
-    script.src = 'https://turing.captcha.qcloud.com/TCaptcha.js'
+    const mode = String(import.meta.env.VITE_CAPTCHA_MODE || '1.0')
+    script.src =
+      mode === '2.0'
+        ? 'https://turing.captcha.qcloud.com/TJCaptcha.js'
+        : 'https://turing.captcha.qcloud.com/TCaptcha.js'
     script.async = true
     script.onload = () => finish()
     script.onerror = () => finish(new Error('验证码加载失败'))
