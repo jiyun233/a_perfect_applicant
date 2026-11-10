@@ -485,7 +485,7 @@ function close() {
     "
     :persistent="isSubmitting || captchaLoading"
     fullscreen
-    class="booking-dialog max-w-2xl"
+    class="booking-dialog !max-w-2xl"
     @update:open="emit('update:open', $event)"
   >
     <template v-if="failed">

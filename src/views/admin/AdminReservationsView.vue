@@ -389,7 +389,7 @@ function refreshDetail() {
       :open="detailOpen"
       title="预约详情"
       :description="detail ? `${detail.machine.name} · ${formatDateLong(detail.date)} ${detail.startTime}–${detail.endTime}` : '加载中…'"
-      class="max-w-2xl"
+      class="!max-w-2xl"
       @update:open="closeDetail"
     >
       <div v-if="detailLoading" class="space-y-3">
