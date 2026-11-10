@@ -1,8 +1,20 @@
-import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
+type ClassDictionary = Record<string, boolean | null | undefined>
+type ClassValue = string | number | boolean | null | undefined | ClassDictionary | ClassValue[]
+
+function classNames(value: ClassValue): string {
+  if (!value) return ''
+  if (typeof value === 'string' || typeof value === 'number') return String(value)
+  if (Array.isArray(value)) return value.map(classNames).filter(Boolean).join(' ')
+  return Object.entries(value)
+    .filter(([, enabled]) => Boolean(enabled))
+    .map(([name]) => name)
+    .join(' ')
+}
+
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(classNames(inputs))
 }
 
 export function clamp(value: number, min: number, max: number) {
