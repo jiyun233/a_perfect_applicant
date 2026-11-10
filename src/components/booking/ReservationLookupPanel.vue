@@ -61,8 +61,8 @@ function normalizeStudentId(value: string) {
 async function search() {
   const studentId = normalizeStudentId(inputStudentId.value)
   searchError.value = ''
-  if (!/^2\d(40|50)\d{6}$/.test(studentId)) {
-    searchError.value = '请输入 10 位学号，第 3–4 位为 40 或 50'
+  if (!/^2\d(50|60)\d{6}$/.test(studentId)) {
+    searchError.value = '请输入 10 位学号，第 3–4 位为 50 或 60'
     return
   }
   isSearching.value = true
@@ -134,7 +134,7 @@ function confirmCancel() {
           <div class="relative min-w-0 flex-1">
             <Input
               v-model="inputStudentId"
-              placeholder="2x40xxxxxx"
+              placeholder="2x50xxxxxx"
               inputmode="numeric"
               maxlength="10"
               class="pr-12 font-mono tracking-wide"
