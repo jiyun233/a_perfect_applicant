@@ -1,5 +1,3 @@
-import { twMerge } from 'tailwind-merge'
-
 type ClassDictionary = Record<string, boolean | null | undefined>
 type ClassValue = string | number | boolean | null | undefined | ClassDictionary | ClassValue[]
 
@@ -14,7 +12,7 @@ function classNames(value: ClassValue): string {
 }
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(classNames(inputs))
+  return classNames(inputs)
 }
 
 export function clamp(value: number, min: number, max: number) {
